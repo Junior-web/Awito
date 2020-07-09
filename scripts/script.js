@@ -1,6 +1,6 @@
 'use strict'
 
-const dataBase = [];
+const dataBase = JSON.parse(localStorage.getItem('awito')) || [];   //  это нужно запомнить, даже не нужно условий)!!!
 
 const d = document,
       modalAdd = d.querySelector('.modal__add'),
@@ -9,35 +9,94 @@ const d = document,
       modalSubmit = d.querySelector('.modal__submit'),
       modalItem = d.querySelector('.modal__item'),
       catalog = d.querySelector('.catalog'),
-      modalBtnWarning = d.querySelector('.modal__btn-warning');
+      modalBtnWarning = d.querySelector('.modal__btn-warning'),
+      modalFileInput = d.querySelector('.modal__file-input'),
+      modalFileBtn = d.querySelector('.modal__file-btn'),
+      modalImageAdd = d.querySelector('.modal__image-add');
+
+const textFileBtn = modalFileBtn.textContent,
+      srcModalImage = modalImageAdd.src;
 
 //  формирование массива элементов формы
 const elementsModalSubmit = [...modalSubmit.elements]
     .filter(elem => elem.tagName !== 'BUTTON');   // спред-оператор???
 
-//  закрытие модальных окон
-const closeModal = function(event) {    // делегирование
-     const target = event.target;
-    
-    if(target.closest('.modal__close') ||
-        target === this) {
-        this.classList.add('hide');
-        modalSubmit.reset();
-        modalBtnWarning.style.display = 'block';
-    } else if(event.code === 'Escape') {
-        modalAdd.classList.add('hide');
-        modalItem.classList.add('hide');
-        modalSubmit.reset();
-        modalBtnWarning.style.display = 'block';
-    } 
+//  сохранение в базу данных
+const saveDB = () => {
+    localStorage.setItem('awito', JSON.stringify(dataBase));
 }
 
-//  валидация форм
-modalSubmit.addEventListener('input', () => {
+const infoPhoto = {};
+
+//  проверка заполнения полей формы
+const checkForm = () => {
     const validForm = elementsModalSubmit.every(elem => elem.value); // ??? почитать про every
     modalBtnSubmit.disabled = !validForm;
     modalBtnWarning.style.display = validForm ? 'none' : '';
+}
+
+//  закрытие модальных окон
+const closeModal = (event) => {    // делегирование
+    const target = event.target;
+
+    if(target.closest('.modal__close') ||
+        target.classList.contains('modal') || 
+        event.code === 'Escape') {
+
+        modalAdd.classList.add('hide');
+        modalItem.classList.add('hide');
+        d.removeEventListener('keydown', closeModal);
+        modalSubmit.reset();
+        modalImageAdd.src = srcModalImage;
+        modalFileBtn.textContent = textFileBtn;
+        checkForm();
+    }
+}
+
+const renderCard = () => {
+    catalog.textContent = '';
+
+    dataBase.forEach((item, i) => {
+        catalog.insertAdjacentHTML('beforeend', `
+            <li class="card" data-id="${i}">
+                <img class="card__image" src="data:image/jpeg;base64,${item.image}" alt="test">
+                <div class="card__description">
+                    <h3 class="card__header">${item.nameItem}</h3>
+                    <div class="card__price">${item.costItem} ₽</div>
+                </div>
+            </li>            
+        `);
+    });
+}
+
+modalFileInput.addEventListener('change', event => {
+    const target = event.target;
+
+    const reader = new FileReader();
+
+    const file = target.files[0];
+
+    infoPhoto.filename = file.name;
+    infoPhoto.size = file.size;
+
+    reader.readAsBinaryString(file);
+
+    reader.addEventListener('load', (event) => {
+        if(infoPhoto.size < 200000) {
+            modalFileBtn.textContent = infoPhoto.filename;
+            infoPhoto.base64 = btoa(event.target.result);  //  ??? base64 для email
+            console.log(infoPhoto);
+            modalImageAdd.src = `data:image/jpeg;base64, ${infoPhoto.base64}`;
+        } else {
+            modalFileBtn.textContent = 'Файл большой!';
+            modalFileInput.value = '';
+            checkForm();
+        }
+    });
 });
+
+//  валидация форм
+modalSubmit.addEventListener('input', checkForm);
 
 //  сохранение данных формы
 modalSubmit.addEventListener('submit', event => {
@@ -48,10 +107,13 @@ modalSubmit.addEventListener('submit', event => {
         itemObj[elem.name] = elem.value;
     }
 
+    itemObj.image = infoPhoto.base64;
     dataBase.push(itemObj);
     modalSubmit.reset();
 
-    //closeModal(event);
+    closeModal({target: modalAdd});
+    saveDB();
+    renderCard();
 });
 
 //  открытие модального окна добавления объявления
@@ -73,4 +135,5 @@ catalog.addEventListener('click', (event) => {
 
 modalAdd.addEventListener('click', closeModal);
 modalItem.addEventListener('click', closeModal);
-modalBtnSubmit.addEventListener('click', () => { modalAdd.classList.add('hide') });  //  ??? неправильно
+
+renderCard();
