@@ -9,6 +9,7 @@ const d = document,
       modalSubmit = d.querySelector('.modal__submit'),
       modalItem = d.querySelector('.modal__item'),
       catalog = d.querySelector('.catalog'),
+      card = d.querySelector('.card'),
       modalBtnWarning = d.querySelector('.modal__btn-warning'),
       modalFileInput = d.querySelector('.modal__file-input'),
       modalFileBtn = d.querySelector('.modal__file-btn'),
@@ -126,10 +127,27 @@ addAd.addEventListener('click', () => {
 //  открытие модального окна карточки товара
 catalog.addEventListener('click', (event) => {
     const target = event.target;
+    const targetCard = target.closest('.card');
 
-    if(target.closest('.card')) {
+    if(targetCard) {
         modalItem.classList.remove('hide');
         d.addEventListener('keydown', closeModal);
+
+        //  заполнение данными модального окна карточки товара
+        const idCard = targetCard.getAttribute('data-id'),
+              currentCard = dataBase[idCard];
+
+        for(const item in currentCard) {
+            const dataImage = d.querySelector(`[data-item=${item}]`);
+
+            if(dataImage) {
+                if(item === 'image') {
+                    dataImage.src = `data:image/jpeg;base64, ${currentCard[item]}`;
+                } else {
+                    dataImage.textContent = currentCard[item];
+                }                
+            }
+        }
     }
 });
 
